@@ -272,7 +272,11 @@ if test "$enable_libusb" = "yes"; then
 	ifdef([PKG_CHECK_MODULES],
 		[PKG_CHECK_MODULES(LIBUSB, libusb,
 			[AC_DEFINE(HAVE_LIBUSB, [1], [Define to 1 if you have libusb])],
-			[ enable_libusb=no ])],
+			[PKG_CHECK_MODULES(LIBUSB, libusb-compat,
+				[AC_DEFINE(HAVE_LIBUSB, [1], [Define to 1 if you have libusb])],
+				[PKG_CHECK_MODULES(LIBUSB, libusb-0.1,
+					[AC_DEFINE(HAVE_LIBUSB, [1], [Define to 1 if you have libusb])],
+					[ enable_libusb=no ])])])],
 		[AC_MSG_WARN([pkg-config not (fully) installed; drivers requiring libusb may not be built])])
 fi
 AC_SUBST(LIBUSB_LIBS)
