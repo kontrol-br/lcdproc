@@ -235,9 +235,9 @@ goodbye_screen(void)
 
 			char *top = "Thanks for using";
 #ifdef LINUX
-			char *low = "LCDproc & Linux!";
+			char *low = " *KONTROL-UTM*  ";
 #else
-			char *low = "    LCDproc!    ";
+			char *low = " *KONTROL-UTM*  ";
 #endif
 
 			drivers_string(1+xoffs, 1+yoffs, top);
