@@ -22,6 +22,7 @@
 #include "hd44780-lis2.h"
 #ifdef HAVE_LIBUSB
 # include "hd44780-bwct-usb.h"
+# include "hd44780-ch341.h"
 # include "hd44780-usbtiny.h"
 # include "hd44780-uss720.h"
 # include "hd44780-usb4all.h"
@@ -86,6 +87,7 @@ static const ConnectionMapping connectionMapping[] = {
 	{ "usblcd",        HD44780_CT_USBLCD,        IF_TYPE_USB,     hd_init_usblcd    },
 #ifdef HAVE_LIBUSB
 	{ "bwctusb",       HD44780_CT_BWCTUSB,       IF_TYPE_USB,     hd_init_bwct_usb  },
+	{ "ch341i2c",      HD44780_CT_CH341I2C,      IF_TYPE_USB,     hd_init_ch341i2c  },
 	{ "usbtiny",       HD44780_CT_USBTINY,       IF_TYPE_USB,     hd_init_usbtiny   },
 	{ "uss720",        HD44780_CT_USS720,        IF_TYPE_USB,     hd_init_uss720    },
 	{ "usb4all",       HD44780_CT_USB4ALL,       IF_TYPE_USB,     hd_init_usb4all   },
