@@ -28,6 +28,8 @@
 
 #define CH341_USB_TIMEOUT_MS   1000
 #define CH341_I2C_RETRIES      3
+#define CH341_EXEC_DELAY_US    40
+#define CH341_CLEAR_DELAY_US   1600
 
 /* CH341 stream mode commands. */
 #define CH341_CMD_I2C_STREAM   0xAA
@@ -49,6 +51,7 @@
 static int ch341_i2c_write(PrivateData *p, unsigned char i2c_addr, const unsigned char *payload, size_t payload_len);
 static int ch341_write_port(PrivateData *p, unsigned char port_value);
 static int ch341_send_raw(PrivateData *p, unsigned char rs, unsigned char ch);
+static int ch341_send_nibble(PrivateData *p, unsigned char rs, unsigned char nibble);
 
 static void ch341_HD44780_senddata(PrivateData *p, unsigned char displayID, unsigned char flags, unsigned char ch);
 static void ch341_HD44780_backlight(PrivateData *p, unsigned char state);
@@ -138,6 +141,39 @@ ch341_send_raw(PrivateData *p, unsigned char rs, unsigned char ch)
 	if (ch341_write_port(p, (unsigned char) (ctrl | lo)) < 0)
 		return -1;
 
+	/* Respect HD44780 command execution timings to avoid command/data
+	 * corruption on slower LCD modules/backpacks. */
+	if (rs == 0) {
+		p->hd44780_functions->uPause(p,
+			((ch == CLEAR) || (ch == HOMECURSOR)) ? CH341_CLEAR_DELAY_US : CH341_EXEC_DELAY_US);
+	}
+	else {
+		p->hd44780_functions->uPause(p, CH341_EXEC_DELAY_US);
+	}
+
+	return 0;
+}
+
+static int
+ch341_send_nibble(PrivateData *p, unsigned char rs, unsigned char nibble)
+{
+	unsigned char ctrl = p->backlight_bit;
+	unsigned char data = (unsigned char) ((nibble & 0x0F) << 4);
+
+	if (rs)
+		ctrl |= CH341_LINE_RS;
+
+	if (ch341_write_port(p, (unsigned char) (ctrl | data)) < 0)
+		return -1;
+	if (p->delayBus)
+		p->hd44780_functions->uPause(p, 1);
+	if (ch341_write_port(p, (unsigned char) (ctrl | data | CH341_LINE_EN)) < 0)
+		return -1;
+	if (p->delayBus)
+		p->hd44780_functions->uPause(p, 1);
+	if (ch341_write_port(p, (unsigned char) (ctrl | data)) < 0)
+		return -1;
+
 	return 0;
 }
 
@@ -224,14 +260,15 @@ opened:
 	(void) ch341_write_port(p, p->backlight_bit);
 	p->hd44780_functions->uPause(p, 20000);
 
-	/* Keep manual init sequence exactly as validated on target hardware. */
-	ch341_send_raw(p, 0, 0x30);
+	/* Keep manual init sequence in backend; do not call common_init().
+	 * During the 4-bit bootstrap, HD44780 expects single nibbles. */
+	ch341_send_nibble(p, 0, 0x03);
 	p->hd44780_functions->uPause(p, 5000);
-	ch341_send_raw(p, 0, 0x30);
+	ch341_send_nibble(p, 0, 0x03);
 	p->hd44780_functions->uPause(p, 5000);
-	ch341_send_raw(p, 0, 0x30);
+	ch341_send_nibble(p, 0, 0x03);
 	p->hd44780_functions->uPause(p, 200);
-	ch341_send_raw(p, 0, 0x20);
+	ch341_send_nibble(p, 0, 0x02);
 	p->hd44780_functions->uPause(p, 200);
 
 	ch341_send_raw(p, 0, 0x28);
