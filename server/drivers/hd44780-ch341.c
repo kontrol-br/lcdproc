@@ -149,15 +149,23 @@ hd_init_ch341i2c(Driver *drvthis)
 	struct usb_bus *bus;
 	struct usb_device *found_dev;
 	int iface;
+	int usb_cfg;
+	int legacy_iface;
 
 	p->hd44780_functions->senddata = ch341_HD44780_senddata;
 	p->hd44780_functions->backlight = ch341_HD44780_backlight;
 	p->hd44780_functions->close = ch341_HD44780_close;
 
 	p->port = drvthis->config_get_int(drvthis->name, "Port", 0, CH341_DEFAULT_I2C_ADDR) & 0x7F;
-	iface = drvthis->config_get_int(drvthis->name, "USBInterface", 0, CH341_DEFAULT_IFACE);
-	p->usbEpOut = drvthis->config_get_int(drvthis->name, "USBEndpointOut", 0, CH341_DEFAULT_EP_OUT);
-	p->usbEpIn = drvthis->config_get_int(drvthis->name, "USBEndpointIn", 0, CH341_DEFAULT_EP_IN);
+	iface = drvthis->config_get_int(drvthis->name, "UsbInterface", 0,
+		drvthis->config_get_int(drvthis->name, "USBInterface", 0, CH341_DEFAULT_IFACE));
+	legacy_iface = drvthis->config_get_int(drvthis->name, "UsbIndex", 0, iface);
+	iface = legacy_iface;
+	usb_cfg = drvthis->config_get_int(drvthis->name, "UsbConfig", 0, 0);
+	p->usbEpOut = drvthis->config_get_int(drvthis->name, "UsbBulkOut", 0,
+		drvthis->config_get_int(drvthis->name, "USBEndpointOut", 0, CH341_DEFAULT_EP_OUT));
+	p->usbEpIn = drvthis->config_get_int(drvthis->name, "UsbBulkIn", 0,
+		drvthis->config_get_int(drvthis->name, "USBEndpointIn", 0, CH341_DEFAULT_EP_IN));
 	p->backlight_bit = CH341_LINE_BL;
 	p->func_set_mode = FUNCSET | IF_4BIT | TWOLINE | SMALLCHAR;
 
@@ -187,8 +195,10 @@ hd_init_ch341i2c(Driver *drvthis)
 	return -1;
 
 opened:
-	if ((found_dev != NULL) && (found_dev->descriptor.bNumConfigurations > 0) &&
-	    (usb_set_configuration(p->usbHandle, found_dev->config[0].bConfigurationValue) < 0)) {
+	if (usb_cfg <= 0 && (found_dev != NULL) && (found_dev->descriptor.bNumConfigurations > 0)) {
+		usb_cfg = found_dev->config[0].bConfigurationValue;
+	}
+	if (usb_cfg > 0 && (usb_set_configuration(p->usbHandle, usb_cfg) < 0)) {
 		report(RPT_DEBUG, "hd44780-ch341: usb_set_configuration failed (non-fatal): %s",
 			strerror(errno));
 	}
